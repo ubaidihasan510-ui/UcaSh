@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
@@ -249,6 +248,7 @@ const Dashboard = ({ user, refreshUser }: { user: User, refreshUser: () => void 
   }, [user]);
 
   const allActions = [
+    { label: 'Scan QR', icon: Icons.Scan, color: 'bg-indigo-500', path: '/scan' },
     { label: 'Send', icon: Icons.Send, color: 'bg-blue-500', path: '/send' },
     { label: 'Cash In', icon: Icons.Download, color: 'bg-emerald-500', path: '/add-money' },
     { label: 'Cash Out', icon: Icons.Plus, color: 'bg-orange-500', path: '/cash-out' },
@@ -353,6 +353,170 @@ const Dashboard = ({ user, refreshUser }: { user: User, refreshUser: () => void 
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+const ScanPage = ({ user, refreshUser }: { user: User, refreshUser: () => void }) => {
+  const [step, setStep] = useState<'scan' | 'pay'>('scan');
+  const [merchant, setMerchant] = useState<{name: string, id: string} | null>(null);
+  const [amount, setAmount] = useState('');
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  // Simulate scanning
+  useEffect(() => {
+    if (step === 'scan') {
+      const timer = setTimeout(() => {
+        // Randomly simulate finding a code
+        // In real app, this would be a camera stream reader
+      }, 5000); 
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
+  const handleSimulatedScan = () => {
+    // Mock Merchant
+    setMerchant({ name: "Star Coffee House", id: "MERCH_88291" });
+    setStep('pay');
+  };
+
+  const handlePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!merchant) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      if (btoa(pin) !== user.pinHash) throw new Error("Incorrect PIN");
+      
+      const res = await Storage.createTransaction(
+        user.id, 
+        TransactionType.MERCHANT_PAY, 
+        Number(amount), 
+        merchant.name, 
+        { merchantId: merchant.id }
+      );
+
+      if (res.success) {
+        refreshUser();
+        navigate('/dashboard');
+        alert("Payment Successful to " + merchant.name);
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (step === 'scan') {
+    return (
+      <div className="h-screen bg-black relative flex flex-col">
+        {/* Camera Overlay */}
+        <div className="absolute inset-0 z-0 bg-slate-900">
+           {/* Simulated Camera Feed (Placeholder) */}
+           <div className="w-full h-full opacity-30 bg-[url('https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')] bg-cover bg-center"></div>
+        </div>
+        
+        {/* Header */}
+        <div className="relative z-10 p-5 flex justify-between items-center text-white">
+          <button onClick={() => navigate('/dashboard')} className="p-2 rounded-full bg-black/40 backdrop-blur-md">
+            <Icons.ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-lg font-semibold">Scan QR Code</h1>
+          <div className="w-10"></div>
+        </div>
+
+        {/* Viewfinder */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-8">
+          <div className="text-white text-center mb-8 opacity-80">Align QR code within the frame</div>
+          
+          <div 
+            onClick={handleSimulatedScan}
+            className="w-64 h-64 border-2 border-primary-500 rounded-3xl relative overflow-hidden cursor-pointer shadow-[0_0_100px_rgba(6,182,212,0.3)] bg-white/5 backdrop-blur-sm"
+          >
+             {/* Scanning Animation Line */}
+             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-400 to-transparent animate-scan-line opacity-80 shadow-[0_0_10px_#22d3ee]"></div>
+             
+             {/* Corner Markers */}
+             <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary-500 rounded-tl-xl"></div>
+             <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary-500 rounded-tr-xl"></div>
+             <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary-500 rounded-bl-xl"></div>
+             <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary-500 rounded-br-xl"></div>
+          </div>
+          
+          <p className="text-primary-300 text-xs mt-6 animate-pulse">(Tap the square to simulate scan)</p>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="relative z-10 bg-black/80 backdrop-blur-lg p-6 rounded-t-3xl border-t border-white/10">
+          <div className="flex justify-around text-white">
+            <button className="flex flex-col items-center gap-2 opacity-100">
+               <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center"><Icons.Scan className="w-6 h-6" /></div>
+               <span className="text-xs">Scan</span>
+            </button>
+             <button className="flex flex-col items-center gap-2 opacity-50">
+               <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center"><Icons.User className="w-6 h-6" /></div>
+               <span className="text-xs">My Code</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Payment Step
+  return (
+    <div className="p-5 animate-slide-up">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => setStep('scan')} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+          <Icons.ArrowLeft className="text-slate-600 dark:text-slate-300" />
+        </button>
+        <h1 className="text-xl font-bold dark:text-white">Merchant Payment</h1>
+      </div>
+
+      <Card className="mb-6 flex items-center gap-4 bg-primary-50 dark:bg-slate-800/50 border-primary-100 dark:border-slate-700">
+         <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
+            <Icons.Scan className="w-6 h-6" />
+         </div>
+         <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase">Paying to</p>
+            <p className="font-bold text-lg text-slate-900 dark:text-white">{merchant?.name}</p>
+            <p className="text-xs text-slate-400">{merchant?.id}</p>
+         </div>
+      </Card>
+
+      <Card>
+        <form onSubmit={handlePayment} className="space-y-4">
+          <Input 
+            label="Amount to Pay"
+            type="number"
+            placeholder="$0.00"
+            autoFocus
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+          />
+          <Input 
+            label="Enter PIN"
+            type="password"
+            maxLength={6}
+            value={pin}
+            onChange={e => setPin(e.target.value)}
+          />
+          
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          <Button type="submit" isLoading={loading} className="mt-4 bg-indigo-600 hover:bg-indigo-700">
+            Confirm Payment
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 };
@@ -692,6 +856,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/dashboard" element={<Dashboard user={user} refreshUser={refreshUser} />} />
         <Route path="/admin" element={<AdminPanel user={user} />} />
+        <Route path="/scan" element={<ScanPage user={user} refreshUser={refreshUser} />} />
         <Route path="/send" element={<GenericTransactionPage user={user} type={TransactionType.SEND_MONEY} title="Send Money" refreshUser={refreshUser} />} />
         <Route path="/add-money" element={<GenericTransactionPage user={user} type={TransactionType.CASH_IN} title="Add Money" refreshUser={refreshUser} />} />
         <Route path="/cash-out" element={<GenericTransactionPage user={user} type={TransactionType.CASH_OUT} title="Cash Out" refreshUser={refreshUser} />} />
