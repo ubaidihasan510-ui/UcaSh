@@ -1,0 +1,8 @@
+{
+  "name": "UcaSh Wallet",
+  "description": "A modern, secure mobile wallet and online payment system featuring AI-powered financial insights.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
